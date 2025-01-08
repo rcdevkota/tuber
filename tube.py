@@ -2,38 +2,38 @@ import os
 import yt_dlp
 
 def download_video():
-    # Declare a variable for the YouTube link
     youtube_link = input("Enter the YouTube video URL (or type 'exit' to quit): ")
-    
     if youtube_link.lower() == 'exit':
         print("Exiting the program.")
-        return  # Stop recursion if the user wants to exit
+        return
 
-    # Define the path to the Downloads folder
     downloads_folder = os.path.expanduser("~/Downloads")
 
-    # Options to prioritize downloading 4K (2160p) if available, otherwise the best video + best audio
+    # (1) Force best video up to 2160p that uses h.264 and best audio that uses aac.
+    #     If no 2160p h.264 track is available, it will fall back to any lower h.264.
     ydl_opts = {
-        'format': 'bestvideo[height<=2160]+bestaudio/best',  # Prioritize 4K or lower if 4K is not available
-        'merge_output_format': 'mp4',                        # Final output format as mp4
-        'outtmpl': os.path.join(downloads_folder, '%(title)s.%(ext)s'),  # Save to Downloads folder
+        'format': (
+            # Try H.264 up to 2160p with AAC audio
+            'bestvideo[height<=2160][vcodec~=avc1]+bestaudio[acodec~=mp4a]/best'
+        ),
+        'merge_output_format': 'mp4',  
+        'outtmpl': os.path.join(downloads_folder, '%(title)s.%(ext)s'),
+        # You do NOT need recode_video if you are only downloading h.264/aac
+        # No re-encode is performed, just a container mux.
         'postprocessors': [{
-            'key': 'FFmpegVideoConvertor',
-            'preferedformat': 'mp4',                         # Convert video to mp4 if needed
-        }],
+            'key': 'FFmpegVideoRemuxer',
+            'preferedformat': 'mp4'
+        }]
     }
 
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             ydl.download([youtube_link])
-
         print(f"Download completed and saved to: {downloads_folder}")
-
     except Exception as e:
         print(f"An error occurred: {e}")
 
-    # Ask for another link after the current download finishes
+    # Ask for another link
     download_video()
 
-# Start the program
 download_video()
